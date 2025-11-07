@@ -1,44 +1,36 @@
 import Book from "../models/Book.js";
 
-/**
- * @desc    Get all books (supports ?genre=&search=&limit=)
- * @route   GET /api/books
- */
 export const getBooks = async (req, res) => {
   try {
     const { genre, search, limit = 30 } = req.query;
     const query = {};
 
-    // 🎯 Genre filter (case-insensitive exact match)
     if (genre && genre.trim() !== "") {
-      query.genre = { $regex: new RegExp(`^${genre.trim()}$`, "i") };
+      query.genre = { $regex: new RegExp("^" + genre + "$", "i") };
     }
 
-    // 🔍 Search filter: name or author partial match
     if (search && search.trim() !== "") {
       query.$or = [
-        { name: { $regex: search.trim(), $options: "i" } },
-        { author: { $regex: search.trim(), $options: "i" } },
+        { name: { $regex: search, $options: "i" } },
+        { author: { $regex: search, $options: "i" } },
       ];
     }
 
-    console.log("📚 Fetching books with query:", query);
-
     const books = await Book.find(query)
-      .sort({ createdAt: -1 }) // latest first
+      .sort({ createdAt: -1 })
       .limit(parseInt(limit));
 
-    console.log(`✅ Books fetched successfully: ${books.length} found`);
+    if (!Array.isArray(books)) {
+      return res.status(500).json({ message: "Books data corrupted" });
+    }
 
-    res.status(200).json(books);
+    res.json(books);
   } catch (error) {
-    console.error("❌ Error fetching books:", error.message);
-    res.status(500).json({
-      message: "Failed to fetch books",
-      error: error.message,
-    });
+    console.error("Error fetching books:", error.message);
+    res.status(500).json({ message: "Failed to fetch books" });
   }
 };
+
 
 /**
  * @desc    Get single book
@@ -113,3 +105,4 @@ export const deleteBook = async (req, res) => {
     res.status(500).json({ message: "Failed to delete book", error: error.message });
   }
 };
+
